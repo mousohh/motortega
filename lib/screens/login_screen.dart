@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart'; 
 import '../styles/app_styles.dart';
 import '../services/api_service.dart';
-// Importa la pantalla de registro
+
+// Importa pantallas
 import 'dashboard_screen.dart';
 import 'register_screen.dart';
 import 'forgot_your_password_screen.dart'; 
+
 class LoginScreen extends StatefulWidget {
   @override
   _LoginScreenState createState() => _LoginScreenState();
@@ -16,12 +18,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
 
   bool isLoading = false;
-  bool isFormValid = false; // ✅ Estado del formulario
+  bool isFormValid = false; 
 
   @override
   void initState() {
     super.initState();
-    // Escuchamos cambios en los campos en tiempo real
     usernameController.addListener(validateForm);
     passwordController.addListener(validateForm);
   }
@@ -34,37 +35,46 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void login() async {
+  setState(() {
+    isLoading = true;
+  });
+
+  try {
+    final response = await apiService.login(
+      usernameController.text.trim(),
+      passwordController.text.trim(),
+    );
+
+    final usuario = response['usuario'];
+    final rolId = usuario['rol_id'];
+    final clienteId = usuario['id']; // 👈 Ajusta el nombre de la clave si en tu API se llama diferente (ej: cliente_id)
+
+    // Mensaje de bienvenida
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Bienvenido, ${usuario['nombre']}')),
+    );
+
+    // 🔹 Redirigimos al Dashboard con rol y clienteId
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DashboardScreen(
+          rolId: rolId,
+          clienteId: clienteId,
+        ),
+      ),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(e.toString())),
+    );
+  } finally {
     setState(() {
-      isLoading = true;
+      isLoading = false;
     });
-
-    try {
-      final response = await apiService.login(
-        usernameController.text.trim(),
-        passwordController.text.trim(),
-      );
-
-      // Mostrar mensaje de bienvenida con el nombre del usuario
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Bienvenido, ${response['usuario']['nombre']}')),
-      );
-
-      // Navegar al Dashboard
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => DashboardScreen()),
-      );
-    } catch (e) {
-      // Mostrar mensaje de error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
-    }
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -126,13 +136,14 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               SizedBox(height: 20),
 
+              // Olvidé mi contraseña
               TextButton(
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) =>
-                            ForgotYourPasswordScreen()), // Redirige a la pantalla de registro
+                      builder: (context) => ForgotYourPasswordScreen(),
+                    ),
                   );
                 },
                 child: Text(
@@ -143,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // Botón de inicio de sesión
               ElevatedButton(
-                onPressed: isFormValid ? login : null, // ✅ Se deshabilita si los campos están vacíos
+                onPressed: isFormValid ? login : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
                       isFormValid ? AppStyles.primaryColor : Colors.grey,
@@ -154,19 +165,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     : Text(
                         'Iniciar sesión',
                         style: TextStyle(
-                            color: AppStyles.textColor, fontSize: 16),
+                          color: AppStyles.textColor, 
+                          fontSize: 16,
+                        ),
                       ),
               ),
               SizedBox(height: 20),
 
-              // Botón para redirigir al registro
+              // Registro
               TextButton(
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) =>
-                            RegisterScreen()), // Redirige a la pantalla de registro
+                        builder: (context) => RegisterScreen()),
                   );
                 },
                 child: Text(

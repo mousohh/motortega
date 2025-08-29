@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
 import '../styles/app_styles.dart';
 
+// 🔹 Importa tus pantallas
+import 'citas_screen.dart';
+import 'mis_vehiculos_screen.dart';
+import 'ventas_screen.dart';
+import 'perfil_screen.dart';
+
 class DashboardScreen extends StatelessWidget {
+  final int rolId; // ✅ Rol recibido desde login
+  final int clienteId; // ✅ Id del cliente recibido desde login
+
+  const DashboardScreen({
+    super.key,
+    required this.rolId,
+    required this.clienteId,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -34,27 +49,26 @@ class DashboardScreen extends StatelessWidget {
           ),
           child: Column(
             children: [
-              SizedBox(height: 60),
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  image: DecorationImage(
-                    image: NetworkImage('/placeholder.svg?height=80&width=80'),
-                    fit: BoxFit.cover,
-                  ),
+              const SizedBox(height: 60),
+
+              // Avatar del usuario
+              CircleAvatar(
+                radius: 40,
+                backgroundColor: Colors.white,
+                child: Icon(
+                  Icons.person,
+                  size: 50,
+                  color: AppStyles.primaryColor,
                 ),
               ),
-              SizedBox(height: 40),
-              _buildMenuButton('Perfil', () {}),
-              SizedBox(height: 15),
-              _buildMenuButton('Mis citas', () {}),
-              SizedBox(height: 15),
-              _buildMenuButton('Mis Vehículos', () {}),
-              SizedBox(height: 15),
-              _buildMenuButton('Ventas', () {}),
-              Spacer(),
+              const SizedBox(height: 40),
+
+              // ✅ Opciones dinámicas según el rol
+              ..._buildMenuOptions(context),
+
+              const Spacer(),
+
+              // Botón de cerrar sesión
               Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: SizedBox(
@@ -65,12 +79,12 @@ class DashboardScreen extends StatelessWidget {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
-                      padding: EdgeInsets.symmetric(vertical: 15),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(25),
                       ),
                     ),
-                    child: Text(
+                    child: const Text(
                       'Cerrar Sesión',
                       style: TextStyle(
                         color: Colors.white,
@@ -101,6 +115,76 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
+  // 🔹 Menú dinámico según el rol
+  List<Widget> _buildMenuOptions(BuildContext context) {
+    switch (rolId) {
+      case 1: // Admin
+        return [
+          _buildMenuButton('Perfil', () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const PerfilScreen()));
+          }),
+          const SizedBox(height: 15),
+          _buildMenuButton('Mis citas', () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const CitasScreen()));
+          }),
+          const SizedBox(height: 15),
+          _buildMenuButton('Mis Vehículos', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => VehiculosScreen(clienteId: clienteId),
+              ),
+            );
+          }),
+          const SizedBox(height: 15),
+          _buildMenuButton('Ventas', () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const VentasScreen()));
+          }),
+        ];
+
+      case 3: // Mecánico
+        return [
+          _buildMenuButton('Citas', () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const CitasScreen()));
+          }),
+        ];
+
+      case 4: // Cliente
+        return [
+          _buildMenuButton('Perfil', () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const PerfilScreen()));
+          }),
+          const SizedBox(height: 15),
+          _buildMenuButton('Mis citas', () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const CitasScreen()));
+          }),
+          const SizedBox(height: 15),
+          _buildMenuButton('Mis Vehículos', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => VehiculosScreen(clienteId: clienteId),
+              ),
+            );
+          }),
+        ];
+
+      default:
+        return [
+          _buildMenuButton('Perfil', () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const PerfilScreen()));
+          }),
+        ];
+    }
+  }
+
   Widget _buildMenuButton(String text, VoidCallback onPressed) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -110,7 +194,7 @@ class DashboardScreen extends StatelessWidget {
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(vertical: 15),
+            padding: const EdgeInsets.symmetric(vertical: 15),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(25),
             ),
