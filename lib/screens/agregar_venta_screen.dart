@@ -11,7 +11,7 @@ class AgregarVentaScreen extends StatefulWidget {
 class _AgregarVentaScreenState extends State<AgregarVentaScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Listas tipadas
+  // Listas tipadas correctamente
   List<Map<String, dynamic>> clientes = [];
   List<Map<String, dynamic>> mecanicos = [];
   List<Map<String, dynamic>> estadosVenta = [];

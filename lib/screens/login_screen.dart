@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart'; 
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../styles/app_styles.dart';
 import '../services/api_service.dart';
 
 // Importa pantallas
 import 'dashboard_screen.dart';
 import 'register_screen.dart';
-import 'forgot_your_password_screen.dart'; 
+import 'forgot_your_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -14,11 +15,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final ApiService apiService = ApiService();
+  final FlutterSecureStorage storage = const FlutterSecureStorage();
+
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   bool isLoading = false;
-  bool isFormValid = false; 
+  bool isFormValid = false;
 
   @override
   void initState() {
@@ -34,47 +37,56 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  void login() async {
-  setState(() {
-    isLoading = true;
-  });
-
-  try {
-    final response = await apiService.login(
-      usernameController.text.trim(),
-      passwordController.text.trim(),
-    );
-
-    final usuario = response['usuario'];
-    final rolId = usuario['rol_id'];
-    final clienteId = usuario['id']; // 👈 Ajusta el nombre de la clave si en tu API se llama diferente (ej: cliente_id)
-
-    // Mensaje de bienvenida
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Bienvenido, ${usuario['nombre']}')),
-    );
-
-    // 🔹 Redirigimos al Dashboard con rol y clienteId
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DashboardScreen(
-          rolId: rolId,
-          clienteId: clienteId,
-        ),
-      ),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(e.toString())),
-    );
-  } finally {
+  Future<void> login() async {
     setState(() {
-      isLoading = false;
+      isLoading = true;
     });
-  }
-}
 
+    try {
+      final response = await apiService.login(
+        usernameController.text.trim(),
+        passwordController.text.trim(),
+      );
+
+      if (response == null || response['usuario'] == null || response['token'] == null) {
+        throw Exception("La respuesta de la API no es válida");
+      }
+
+      final usuario = response['usuario'];
+      final rolId = usuario['rol_id'];
+      final clienteId = usuario['id'];
+      final token = response['token'];
+
+      // 🔹 Guardamos credenciales seguras
+      await storage.write(key: 'token', value: token);
+      await storage.write(key: 'rolId', value: rolId.toString());
+      await storage.write(key: 'clienteId', value: clienteId.toString());
+
+      // Mensaje de bienvenida
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Bienvenido, ${usuario['nombre']}')),
+      );
+
+      // 🔹 Redirigimos al Dashboard
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DashboardScreen(
+            rolId: rolId,
+            clienteId: clienteId,
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al iniciar sesión: $e")),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppStyles.backgroundColor,
       body: Center(
         child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -92,14 +104,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 120,
                 height: 120,
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               // Título
               Text(
                 'Inicio de sesión',
                 style: AppStyles.titleStyle,
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               // Campo de usuario
               TextField(
@@ -116,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Campo de contraseña
               TextField(
@@ -134,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               // Olvidé mi contraseña
               TextButton(
@@ -158,27 +170,27 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
                       isFormValid ? AppStyles.primaryColor : Colors.grey,
-                  padding: EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
                 ),
                 child: isLoading
                     ? CircularProgressIndicator(color: AppStyles.textColor)
                     : Text(
                         'Iniciar sesión',
                         style: TextStyle(
-                          color: AppStyles.textColor, 
+                          color: AppStyles.textColor,
                           fontSize: 16,
                         ),
                       ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               // Registro
               TextButton(
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (context) => RegisterScreen()),
+                    MaterialPageRoute(builder: (context) => RegisterScreen()),
                   );
                 },
                 child: Text(

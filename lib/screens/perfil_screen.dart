@@ -71,7 +71,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
                       // Nombre completo
                       Text(
-                        "${usuario!["name"] ?? ""} ${usuario!["apellido"] ?? ""}",
+                        "${usuario!["nombre"] ?? ""} ${usuario!["apellido"] ?? ""}",
                         style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -91,7 +91,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       const SizedBox(height: 20),
 
                       // Info detallada
-                      _infoItem(Icons.email, "Correo", usuario!["email"]),
+                      _infoItem(Icons.email, "Correo", usuario!["correo"]),
                       _infoItem(Icons.phone, "Teléfono", usuario!["telefono"]),
                       _infoItem(Icons.home, "Dirección", usuario!["direccion"]),
                       const SizedBox(height: 30),

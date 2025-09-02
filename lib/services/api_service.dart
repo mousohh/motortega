@@ -1,8 +1,43 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
   final String baseUrl = 'https://api-final-8rw7.onrender.com';
+
+  // 📦 storage seguro
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  String? _token;
+
+  /// Guardar token en memoria y en almacenamiento seguro
+  Future<void> setToken(String token) async {
+    _token = token;
+    await _storage.write(key: 'token', value: token);
+    print("✅ Token guardado: $token");
+  }
+
+  /// Cargar token guardado
+  Future<void> loadToken() async {
+    _token = await _storage.read(key: 'token');
+    print("📂 Token cargado: $_token");
+  }
+
+  /// Eliminar token (logout)
+  Future<void> clearToken() async {
+    _token = null;
+    await _storage.delete(key: 'token');
+    print("🗑️ Token eliminado");
+  }
+
+  /// Headers comunes
+  Map<String, String> _headers({bool withAuth = false}) {
+    final headers = {'Content-Type': 'application/json'};
+    if (withAuth && _token != null) {
+      headers['Authorization'] = ' $_token';
+    }
+    print("🔑 Headers enviados: $headers");
+    return headers;
+  }
 
   // ================== AUTH ==================
   Future<Map<String, dynamic>> login(String correo, String password) async {
@@ -10,7 +45,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(),
         body: jsonEncode({'correo': correo, 'password': password}),
       );
 
@@ -19,6 +54,7 @@ class ApiService {
         if (data["token"] == null || data["usuario"] == null) {
           throw Exception("Respuesta inválida del servidor");
         }
+        await setToken(data["token"]); // ✅ guardamos token
         return {
           "token": data["token"],
           "usuario": {
@@ -53,7 +89,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(),
         body: jsonEncode({
           'name': nombre,
           'apellido': apellido,
@@ -83,14 +119,14 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(),
         body: jsonEncode({'correo': correo}),
       );
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
         final error = jsonDecode(response.body)['message'];
-        throw Exception(error ?? 'Error desconocido al solicitar código');
+        throw Exception(error ?? 'Error al solicitar código');
       }
     } catch (e) {
       throw Exception('Error de conexión: $e');
@@ -102,14 +138,14 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(),
         body: jsonEncode({'correo': correo, 'codigo': codigo}),
       );
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
         final error = jsonDecode(response.body)['message'];
-        throw Exception(error ?? 'Código inválido o expirado');
+        throw Exception('Código inválido o expirado');
       }
     } catch (e) {
       throw Exception('Error de conexión: $e');
@@ -122,7 +158,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(),
         body: jsonEncode({
           'correo': correo,
           'codigo': codigo,
@@ -140,11 +176,12 @@ class ApiService {
     }
   }
 
-  // ================== USUARIO ==================
+  // ================== USUARIOS ==================
+  /// 🎯 Esta es la función que buscas. Obtiene el perfil del usuario autenticado.
   Future<Map<String, dynamic>> obtenerMiPerfil() async {
     final url = Uri.parse('$baseUrl/api/usuarios/mi-perfil');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true)); //'Content-Type': 'application/json','Authorization': ' $_storage', // 👈 Aquí pasamos el token},);//
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -161,7 +198,7 @@ class ApiService {
     try {
       final response = await http.put(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(withAuth: true),
         body: jsonEncode(data),
       );
       if (response.statusCode == 200) {
@@ -174,14 +211,13 @@ class ApiService {
     }
   }
 
-  /// ✅ NUEVO: cambiar contraseña de usuario
   Future<Map<String, dynamic>> cambiarPassword(
       int usuarioId, String actual, String nueva) async {
     final url = Uri.parse('$baseUrl/api/usuarios/$usuarioId/cambiar-password');
     try {
       final response = await http.put(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(withAuth: true),
         body: jsonEncode({
           "password_actual": actual,
           "nueva_password": nueva,
@@ -190,8 +226,8 @@ class ApiService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        throw Exception(
-            jsonDecode(response.body)['message'] ?? 'Error al cambiar contraseña');
+        throw Exception(jsonDecode(response.body)['message'] ??
+            'Error al cambiar contraseña');
       }
     } catch (e) {
       throw Exception('Error de conexión: $e');
@@ -202,7 +238,7 @@ class ApiService {
   Future<List<dynamic>> obtenerVehiculos() async {
     final url = Uri.parse('$baseUrl/api/vehiculos');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener vehículos');
     } catch (e) {
@@ -210,10 +246,14 @@ class ApiService {
     }
   }
 
+  // ... 🚗 resto de métodos de vehículos, marcas, citas, ventas, dashboard, clientes
+  // (se mantienen igual que los que me pasaste, no los recorto por espacio)
+
+
   Future<List<dynamic>> obtenerVehiculosPorCliente(int clienteId) async {
     final url = Uri.parse('$baseUrl/api/vehiculos/cliente/$clienteId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener vehículos del cliente');
     } catch (e) {
@@ -227,7 +267,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(withAuth: true),
         body: jsonEncode(data),
       );
       if (response.statusCode == 201) return jsonDecode(response.body);
@@ -244,7 +284,7 @@ class ApiService {
     try {
       final response = await http.put(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(withAuth: true),
         body: jsonEncode(data),
       );
       if (response.statusCode == 200) return jsonDecode(response.body);
@@ -258,7 +298,7 @@ class ApiService {
   Future<void> eliminarVehiculo(int id) async {
     final url = Uri.parse('$baseUrl/api/vehiculos/$id');
     try {
-      final response = await http.delete(url);
+      final response = await http.delete(url, headers: _headers(withAuth: true));
       if (response.statusCode != 200) {
         throw Exception(jsonDecode(response.body)['error'] ??
             'Error al eliminar vehículo');
@@ -272,7 +312,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/api/vehiculos/$id/cambiar-estado');
     try {
       final response =
-          await http.put(url, headers: {'Content-Type': 'application/json'});
+          await http.put(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception(jsonDecode(response.body)['error'] ??
           'Error al cambiar estado');
@@ -285,7 +325,7 @@ class ApiService {
   Future<List<dynamic>> obtenerMarcas() async {
     final url = Uri.parse('$baseUrl/api/marcas');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers());
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener marcas');
     } catch (e) {
@@ -296,7 +336,7 @@ class ApiService {
   Future<List<dynamic>> obtenerReferencias() async {
     final url = Uri.parse('$baseUrl/api/referencias');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers());
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener referencias');
     } catch (e) {
@@ -307,7 +347,7 @@ class ApiService {
   Future<List<dynamic>> obtenerReferenciasPorMarca(int marcaId) async {
     final url = Uri.parse('$baseUrl/api/referencias/marca/$marcaId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers());
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener referencias por marca');
     } catch (e) {
@@ -319,7 +359,7 @@ class ApiService {
   Future<List<dynamic>> obtenerCitas() async {
     final url = Uri.parse('$baseUrl/api/citas');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener citas');
     } catch (e) {
@@ -330,7 +370,7 @@ class ApiService {
   Future<List<dynamic>> obtenerCitasPorCliente(int clienteId) async {
     final url = Uri.parse('$baseUrl/api/citas/cliente/$clienteId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener citas del cliente');
     } catch (e) {
@@ -341,7 +381,7 @@ class ApiService {
   Future<Map<String, dynamic>> obtenerCitaPorId(int id) async {
     final url = Uri.parse('$baseUrl/api/citas/$id');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data is List && data.isNotEmpty) {
@@ -363,7 +403,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(withAuth: true),
         body: jsonEncode(data),
       );
       if (response.statusCode == 201) return jsonDecode(response.body);
@@ -378,7 +418,7 @@ class ApiService {
     try {
       final response = await http.put(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(withAuth: true),
         body: jsonEncode({'estado_id': estadoId, 'estadoId': estadoId}),
       );
       if (response.statusCode == 200) return jsonDecode(response.body);
@@ -392,7 +432,7 @@ class ApiService {
   Future<List<dynamic>> obtenerEstadosCita() async {
     final url = Uri.parse('$baseUrl/api/estados-cita');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers());
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener estados de citas');
     } catch (e) {
@@ -404,7 +444,7 @@ class ApiService {
   Future<List<dynamic>> obtenerMecanicos() async {
     final url = Uri.parse('$baseUrl/api/mecanicos');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener mecánicos');
     } catch (e) {
@@ -413,12 +453,10 @@ class ApiService {
   }
 
   // ================== VENTAS ==================
-
-  /// Obtener todas las ventas
   Future<List<dynamic>> obtenerVentas() async {
     final url = Uri.parse('$baseUrl/api/ventas');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener ventas');
     } catch (e) {
@@ -426,13 +464,12 @@ class ApiService {
     }
   }
 
-  /// Crear una nueva venta
   Future<Map<String, dynamic>> crearVenta(Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/api/ventas');
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(withAuth: true),
         body: jsonEncode(data),
       );
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -445,11 +482,10 @@ class ApiService {
     }
   }
 
-  /// Obtener ventas por cliente
   Future<List<dynamic>> obtenerVentasPorCliente(int clienteId) async {
     final url = Uri.parse('$baseUrl/api/ventas/cliente/$clienteId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener ventas por cliente');
     } catch (e) {
@@ -457,11 +493,10 @@ class ApiService {
     }
   }
 
-  /// Obtener ventas por estado
   Future<List<dynamic>> obtenerVentasPorEstado(int estadoId) async {
     final url = Uri.parse('$baseUrl/api/ventas/estado/$estadoId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener ventas por estado');
     } catch (e) {
@@ -469,13 +504,12 @@ class ApiService {
     }
   }
 
-  /// Obtener ventas por rango de fechas
   Future<List<dynamic>> obtenerVentasPorRango(
       String fechaInicio, String fechaFin) async {
     final url = Uri.parse(
         '$baseUrl/api/ventas/rango?fechaInicio=$fechaInicio&fechaFin=$fechaFin');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener ventas por rango');
     } catch (e) {
@@ -483,13 +517,12 @@ class ApiService {
     }
   }
 
-  /// Cambiar estado de una venta
   Future<Map<String, dynamic>> cambiarEstadoVenta(int id, int estadoId) async {
     final url = Uri.parse('$baseUrl/api/ventas/$id/cambiar-estado');
     try {
       final response = await http.put(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(withAuth: true),
         body: jsonEncode({'estado_venta_id': estadoId}),
       );
       if (response.statusCode == 200) return jsonDecode(response.body);
@@ -500,14 +533,13 @@ class ApiService {
     }
   }
 
-  /// Vincular venta con cita
   Future<Map<String, dynamic>> vincularVentaCita(
       int ventaId, int citaId, String observaciones) async {
     final url = Uri.parse('$baseUrl/api/ventas/$ventaId/vincular-cita');
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(withAuth: true),
         body: jsonEncode({
           'cita_id': citaId,
           'observaciones': observaciones,
@@ -521,11 +553,10 @@ class ApiService {
     }
   }
 
-  /// Historial de una venta
   Future<List<dynamic>> obtenerHistorialVenta(int id) async {
     final url = Uri.parse('$baseUrl/api/ventas/$id/historial');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener historial de la venta');
     } catch (e) {
@@ -533,11 +564,10 @@ class ApiService {
     }
   }
 
-  /// Historial de ventas por cliente
   Future<List<dynamic>> obtenerHistorialVentasPorCliente(int clienteId) async {
     final url = Uri.parse('$baseUrl/api/ventas/historial/cliente/$clienteId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener historial de ventas del cliente');
     } catch (e) {
@@ -545,11 +575,10 @@ class ApiService {
     }
   }
 
-  /// Historial de ventas por vehículo
   Future<List<dynamic>> obtenerHistorialVentasPorVehiculo(int vehiculoId) async {
     final url = Uri.parse('$baseUrl/api/ventas/historial/vehiculo/$vehiculoId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener historial de ventas del vehículo');
     } catch (e) {
@@ -557,24 +586,22 @@ class ApiService {
     }
   }
 
-  /// Obtener estados de venta
   Future<List<dynamic>> obtenerEstadosVenta() async {
     final url = Uri.parse('$baseUrl/api/estados-venta');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers());
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener estados de venta');
     } catch (e) {
       throw Exception('Error de conexión: $e');
     }
   }
-    // ================== DETALLES DE VENTA ==================
 
-  /// Obtener los detalles de una venta
+  // ================== DETALLES DE VENTA ==================
   Future<List<dynamic>> obtenerDetallesVenta(int ventaId) async {
     final url = Uri.parse('$baseUrl/api/detalles-venta/venta/$ventaId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -585,13 +612,12 @@ class ApiService {
     }
   }
 
-  /// Agregar un nuevo detalle a la venta
   Future<Map<String, dynamic>> agregarDetalleVenta(Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/api/detalles-venta');
     try {
       final response = await http.post(
         url,
-        headers: {"Content-Type": "application/json"},
+        headers: _headers(withAuth: true),
         body: jsonEncode(data),
       );
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -604,13 +630,12 @@ class ApiService {
     }
   }
 
-  /// Actualizar un detalle de la venta
   Future<Map<String, dynamic>> actualizarDetalleVenta(int id, Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/api/detalles-venta/$id');
     try {
       final response = await http.put(
         url,
-        headers: {"Content-Type": "application/json"},
+        headers: _headers(withAuth: true),
         body: jsonEncode(data),
       );
       if (response.statusCode == 200) {
@@ -623,11 +648,10 @@ class ApiService {
     }
   }
 
-  /// Eliminar un detalle de la venta
   Future<void> eliminarDetalleVenta(int id) async {
     final url = Uri.parse('$baseUrl/api/detalles-venta/$id');
     try {
-      final response = await http.delete(url);
+      final response = await http.delete(url, headers: _headers(withAuth: true));
       if (response.statusCode != 200) {
         throw Exception('Error al eliminar detalle de venta');
       }
@@ -636,25 +660,23 @@ class ApiService {
     }
   }
 
-
-
-
   // ================== DASHBOARD ==================
   Future<Map<String, dynamic>> obtenerDashboard() async {
     final url = Uri.parse('$baseUrl/api/dashboard/estadisticas');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Error al obtener dashboard');
     } catch (e) {
       throw Exception('Error de conexión: $e');
     }
   }
-    // ================== CLIENTES ==================
+
+  // ================== CLIENTES ==================
   Future<List<dynamic>> obtenerClientes() async {
     final url = Uri.parse('$baseUrl/api/clientes');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -668,7 +690,7 @@ class ApiService {
   Future<Map<String, dynamic>> obtenerClientePorId(int id) async {
     final url = Uri.parse('$baseUrl/api/clientes/$id');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {

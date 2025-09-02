@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../styles/app_styles.dart';
 
 // 🔹 Importa tus pantallas
@@ -6,6 +7,7 @@ import 'citas_screen.dart';
 import 'mis_vehiculos_screen.dart';
 import 'ventas_screen.dart';
 import 'perfil_screen.dart';
+import 'login_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   final int rolId; // ✅ Rol recibido desde login
@@ -16,6 +18,17 @@ class DashboardScreen extends StatelessWidget {
     required this.rolId,
     required this.clienteId,
   });
+
+  // 🔹 Cerrar sesión (limpia token y regresa al login)
+  Future<void> _logout(BuildContext context) async {
+    const storage = FlutterSecureStorage();
+    await storage.deleteAll(); // limpia token, rolId, clienteId
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => LoginScreen()),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,9 +87,7 @@ class DashboardScreen extends StatelessWidget {
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/login');
-                    },
+                    onPressed: () => _logout(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
                       padding: const EdgeInsets.symmetric(vertical: 15),
