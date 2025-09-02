@@ -31,13 +31,13 @@ class ApiService {
 
   /// Headers comunes
   Map<String, String> _headers({bool withAuth = false}) {
-    final headers = {'Content-Type': 'application/json'};
-    if (withAuth && _token != null) {
-      headers['Authorization'] = ' $_token';
-    }
-    print("🔑 Headers enviados: $headers");
-    return headers;
+  final headers = {'Content-Type': 'application/json'};
+  if (withAuth && _token != null) {
+    headers['Authorization'] = '$_token';  // 🔧 Cambio aquí
   }
+  print("📋 Headers enviados: $headers");
+  return headers;
+}
 
   // ================== AUTH ==================
   Future<Map<String, dynamic>> login(String correo, String password) async {
@@ -179,18 +179,19 @@ class ApiService {
   // ================== USUARIOS ==================
   /// 🎯 Esta es la función que buscas. Obtiene el perfil del usuario autenticado.
   Future<Map<String, dynamic>> obtenerMiPerfil() async {
-    final url = Uri.parse('$baseUrl/api/usuarios/mi-perfil');
-    try {
-      final response = await http.get(url, headers: _headers(withAuth: true)); //'Content-Type': 'application/json','Authorization': ' $_storage', // 👈 Aquí pasamos el token},);//
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Error al obtener perfil');
-      }
-    } catch (e) {
-      throw Exception('Error de conexión: $e');
+  await loadToken(); // 🔧 Asegúrate de cargar el token primero
+  final url = Uri.parse('$baseUrl/api/usuarios/mi-perfil');
+  try {
+    final response = await http.get(url, headers: _headers(withAuth: true));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Error al obtener perfil: ${response.statusCode}');
     }
+  } catch (e) {
+    throw Exception('Error de conexión: $e');
   }
+}
 
   Future<Map<String, dynamic>> actualizarMiPerfil(
       Map<String, dynamic> data) async {
@@ -236,6 +237,7 @@ class ApiService {
 
   // ================== VEHÍCULOS ==================
   Future<List<dynamic>> obtenerVehiculos() async {
+    await loadToken(); // 🔧 Asegúrate de cargar el token primero
     final url = Uri.parse('$baseUrl/api/vehiculos');
     try {
       final response = await http.get(url, headers: _headers(withAuth: true));
@@ -251,6 +253,7 @@ class ApiService {
 
 
   Future<List<dynamic>> obtenerVehiculosPorCliente(int clienteId) async {
+    await loadToken(); // 🔧 Asegúrate de cargar el token primero
     final url = Uri.parse('$baseUrl/api/vehiculos/cliente/$clienteId');
     try {
       final response = await http.get(url, headers: _headers(withAuth: true));
@@ -357,6 +360,7 @@ class ApiService {
 
   // ================== CITAS ==================
   Future<List<dynamic>> obtenerCitas() async {
+    await loadToken(); // 🔧 Asegúrate de cargar el token primero
     final url = Uri.parse('$baseUrl/api/citas');
     try {
       final response = await http.get(url, headers: _headers(withAuth: true));
@@ -454,6 +458,7 @@ class ApiService {
 
   // ================== VENTAS ==================
   Future<List<dynamic>> obtenerVentas() async {
+    await loadToken(); // 🔧 Asegúrate de cargar el token primero
     final url = Uri.parse('$baseUrl/api/ventas');
     try {
       final response = await http.get(url, headers: _headers(withAuth: true));
@@ -465,6 +470,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> crearVenta(Map<String, dynamic> data) async {
+    await loadToken(); // 🔧 Asegúrate de cargar el token primero
     final url = Uri.parse('$baseUrl/api/ventas');
     try {
       final response = await http.post(
