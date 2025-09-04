@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../styles/app_styles.dart';
+import 'editar_perfil_screen.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -113,22 +114,58 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      // Botón Cambiar contraseña
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 12, horizontal: 20),
-                        ),
-                        icon: const Icon(Icons.lock, color: Colors.white),
-                        label: const Text("Cambiar contraseña",
-                            style: TextStyle(color: Colors.white)),
-                        onPressed: () {
-                          Navigator.pushNamed(context, "/cambiarPassword",
-                              arguments: usuario!["id"]);
-                        },
-                      ),
-                      const Spacer(),
+                     // Botón Cambiar contraseña
+ElevatedButton.icon(
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.deepPurple,
+    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+  ),
+  icon: const Icon(Icons.lock, color: Colors.white),
+  label: const Text(
+    "Cambiar contraseña",
+    style: TextStyle(color: Colors.white),
+  ),
+  onPressed: () async {
+    final correo = usuario!["correo"]; // 👈 tomamos el correo del perfil
+
+    if (correo == null || correo.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("El usuario no tiene correo registrado."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // 🚀 Enviamos directamente el correo a la API
+      final response = await apiService.solicitarCodigo(correo);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response["message"] ?? "Código enviado al correo."),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // 👉 Redirigimos a VerifyCodeScreen
+      Navigator.pushNamed(
+        context,
+        "/verifyCode",
+        arguments: {"email": correo},
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error al enviar código: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  },
+),
+
 
                       // Botón Cerrar sesión
                       ElevatedButton.icon(

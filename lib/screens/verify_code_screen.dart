@@ -28,25 +28,30 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
     setState(() => _isLoading = true);
 
     try {
+      print("📧 Enviando correo a la API: ${widget.email}");
+      print("🔑 Código ingresado: ${_codeController.text}");
+
       final response = await _apiService.verificarCodigo(
-        widget.email,
-        _codeController.text,
+        widget.email.trim(), // 👈 trim para evitar espacios
+        _codeController.text.trim(),
       );
+
+      print("✅ Respuesta de API: $response");
 
       // 🚀 Si es correcto, redirige a ResetPasswordScreen
       Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (context) => ResetPasswordScreen(
-      email: widget.email,
-      codigo: _codeController.text, // 👈 pasamos el código
-    ),
-  ),
-);
-
+        context,
+        MaterialPageRoute(
+          builder: (context) => ResetPasswordScreen(
+            email: widget.email,
+            codigo: _codeController.text,
+          ),
+        ),
+      );
     } catch (e) {
+      print("❌ Error al verificar: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        SnackBar(content: Text("Error al verificar: $e"), backgroundColor: Colors.red),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -59,16 +64,21 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text("Verificar código"),
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            Text("Se envió un código a ${widget.email}",
-                style: const TextStyle(color: Colors.white)),
+            Text(
+              "Se envió un código a ${widget.email}",
+              style: const TextStyle(color: Colors.white),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 20),
+
+            // Campo para ingresar código
             TextField(
               controller: _codeController,
               keyboardType: TextInputType.number,
@@ -88,6 +98,8 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
               ),
             ),
             const SizedBox(height: 20),
+
+            // Botón verificar
             _isLoading
                 ? const CircularProgressIndicator()
                 : ElevatedButton(

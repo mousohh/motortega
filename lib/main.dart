@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+// 🔹 Importa tus pantallas
 import 'screens/login_screen.dart';
 import 'screens/forgot_your_password_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/editar_perfil_screen.dart';
+import 'screens/verify_code_screen.dart'; 
 
 void main() {
   runApp(MyApp());
@@ -81,16 +85,40 @@ class _MyAppState extends State<MyApp> {
           ),
         ),
       ),
-      // 🔹 Usamos home dinámico en vez de initialRoute
+
+      // 🔹 Home dinámico según token
       home: _token == null
           ? LoginScreen()
           : DashboardScreen(
               rolId: _rolId ?? 0,
               clienteId: _clienteId ?? 0,
             ),
+
       routes: {
+        '/login': (context) => LoginScreen(),
         '/forgot-password': (context) => ForgotYourPasswordScreen(),
+        '/home': (context) => DashboardScreen(
+              rolId: _rolId ?? 0,
+              clienteId: _clienteId ?? 0,
+            ),
       },
+
+      onGenerateRoute: (settings) {
+  if (settings.name == '/editarPerfil') {
+    final args = settings.arguments as Map<String, dynamic>;
+    return MaterialPageRoute(
+      builder: (context) => EditarPerfilScreen(usuario: args),
+    );
+  }
+  if (settings.name == '/verifyCode') {
+    final args = settings.arguments as Map<String, dynamic>;
+    return MaterialPageRoute(
+      builder: (context) => VerifyCodeScreen(email: args["email"]),
+    );
+  }
+  return null;
+},
+
     );
   }
 }

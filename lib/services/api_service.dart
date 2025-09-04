@@ -31,13 +31,13 @@ class ApiService {
 
   /// Headers comunes
   Map<String, String> _headers({bool withAuth = false}) {
-  final headers = {'Content-Type': 'application/json'};
-  if (withAuth && _token != null) {
-    headers['Authorization'] = '$_token';  // 🔧 Cambio aquí
+    final headers = {'Content-Type': 'application/json'};
+    if (withAuth && _token != null) {
+      headers['Authorization'] = '$_token'; // 🔧 Cambio aquí
+    }
+    print("📋 Headers enviados: $headers");
+    return headers;
   }
-  print("📋 Headers enviados: $headers");
-  return headers;
-}
 
   // ================== AUTH ==================
   Future<Map<String, dynamic>> login(String correo, String password) async {
@@ -114,46 +114,70 @@ class ApiService {
     }
   }
 
-  Future<dynamic> solicitarCodigo(String correo) async {
-    final url = Uri.parse('$baseUrl/api/auth/solicitar-codigo');
-    try {
-      final response = await http.post(
-        url,
-        headers: _headers(),
-        body: jsonEncode({'correo': correo}),
-      );
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        final error = jsonDecode(response.body)['message'];
-        throw Exception(error ?? 'Error al solicitar código');
-      }
-    } catch (e) {
-      throw Exception('Error de conexión: $e');
-    }
-  }
+// ================== RECUPERAR CONTRASEÑA ==================
+Future<dynamic> solicitarCodigo(String correo) async {
+  final url = Uri.parse('$baseUrl/api/auth/solicitar-codigo');
+  try {
+    // 👀 DEBUG
+    print("📤 [solicitarCodigo] Enviando correo: $correo");
 
-  Future<dynamic> verificarCodigo(String correo, String codigo) async {
-    final url = Uri.parse('$baseUrl/api/auth/verificar-codigo');
-    try {
-      final response = await http.post(
-        url,
-        headers: _headers(),
-        body: jsonEncode({'correo': correo, 'codigo': codigo}),
-      );
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        final error = jsonDecode(response.body)['message'];
-        throw Exception('Código inválido o expirado');
-      }
-    } catch (e) {
-      throw Exception('Error de conexión: $e');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'correo': correo}),
+    );
+
+    print("📡 [solicitarCodigo] Respuesta ${response.statusCode}: ${response.body}");
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      final error = jsonDecode(response.body)['message'];
+      throw Exception(error ?? 'Error al solicitar código');
     }
+  } catch (e) {
+    print("❌ [solicitarCodigo] Error: $e");
+    throw Exception('Error de conexión: $e');
   }
+}
+
+Future<dynamic> verificarCodigo(String correo, String codigo) async {
+  final url = Uri.parse('$baseUrl/api/auth/verificar-codigo');
+  try {
+    // 👀 DEBUG
+    print("📤 [verificarCodigo] Enviando correo: $correo, código: $codigo");
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'correo': correo,
+        'codigo': codigo,
+      }),
+    );
+
+    print("📡 [verificarCodigo] Respuesta ${response.statusCode}: ${response.body}");
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      final error = jsonDecode(response.body)['message'];
+      throw Exception(error ?? 'Código inválido o expirado');
+    }
+  } catch (e) {
+    print("❌ [verificarCodigo] Error: $e");
+    throw Exception('Error de conexión: $e');
+  }
+}
+
 
   Future<dynamic> resetPassword(
       String correo, String codigo, String nuevaPassword) async {
+    await loadToken(); // 🔧 Asegúrate de cargar el token primero
     final url = Uri.parse('$baseUrl/api/auth/nueva-password');
     try {
       final response = await http.post(
@@ -178,42 +202,57 @@ class ApiService {
 
   // ================== USUARIOS ==================
   /// 🎯 Esta es la función que buscas. Obtiene el perfil del usuario autenticado.
+    /// ================== USUARIOS ==================
   Future<Map<String, dynamic>> obtenerMiPerfil() async {
-  await loadToken(); // 🔧 Asegúrate de cargar el token primero
-  final url = Uri.parse('$baseUrl/api/usuarios/mi-perfil');
-  try {
-    final response = await http.get(url, headers: _headers(withAuth: true));
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Error al obtener perfil: ${response.statusCode}');
-    }
-  } catch (e) {
-    throw Exception('Error de conexión: $e');
-  }
-}
-
-  Future<Map<String, dynamic>> actualizarMiPerfil(
-      Map<String, dynamic> data) async {
+    await loadToken();
     final url = Uri.parse('$baseUrl/api/usuarios/mi-perfil');
     try {
-      final response = await http.put(
-        url,
-        headers: _headers(withAuth: true),
-        body: jsonEncode(data),
-      );
+      final response = await http.get(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        throw Exception('Error al actualizar perfil');
+        throw Exception('Error al obtener perfil: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Error de conexión: $e');
     }
   }
 
+  Future<Map<String, dynamic>> actualizarMiPerfil(Map<String, dynamic> data) async {
+    await loadToken();
+    final url = Uri.parse('$baseUrl/api/usuarios/mi-perfil');
+
+    // 👇 Enviar TODOS los campos que tienes en "usuario"
+    final body = Map<String, dynamic>.from(data);
+
+    print("📦 Body enviado: ${jsonEncode(body)}");
+
+    final response = await http.put(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': ' $_token', // 👈 ahora con Bearer
+      },
+      body: jsonEncode(body),
+    );
+
+    print("📡 Respuesta actualizar (${response.statusCode}): ${response.body}");
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      final errorMsg = jsonDecode(response.body)['error'] ?? 'Error al actualizar perfil';
+      throw Exception(errorMsg);
+    }
+  }
+
+
+
+
+
   Future<Map<String, dynamic>> cambiarPassword(
       int usuarioId, String actual, String nueva) async {
+    await loadToken(); // 🔧 Asegúrate de cargar el token primero
     final url = Uri.parse('$baseUrl/api/usuarios/$usuarioId/cambiar-password');
     try {
       final response = await http.put(
@@ -251,7 +290,6 @@ class ApiService {
   // ... 🚗 resto de métodos de vehículos, marcas, citas, ventas, dashboard, clientes
   // (se mantienen igual que los que me pasaste, no los recorto por espacio)
 
-
   Future<List<dynamic>> obtenerVehiculosPorCliente(int clienteId) async {
     await loadToken(); // 🔧 Asegúrate de cargar el token primero
     final url = Uri.parse('$baseUrl/api/vehiculos/cliente/$clienteId');
@@ -264,8 +302,7 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> crearVehiculo(
-      Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> crearVehiculo(Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/api/vehiculos');
     try {
       final response = await http.post(
@@ -291,8 +328,8 @@ class ApiService {
         body: jsonEncode(data),
       );
       if (response.statusCode == 200) return jsonDecode(response.body);
-      throw Exception(jsonDecode(response.body)['error'] ??
-          'Error al actualizar vehículo');
+      throw Exception(
+          jsonDecode(response.body)['error'] ?? 'Error al actualizar vehículo');
     } catch (e) {
       throw Exception('Error de conexión: $e');
     }
@@ -301,10 +338,11 @@ class ApiService {
   Future<void> eliminarVehiculo(int id) async {
     final url = Uri.parse('$baseUrl/api/vehiculos/$id');
     try {
-      final response = await http.delete(url, headers: _headers(withAuth: true));
+      final response =
+          await http.delete(url, headers: _headers(withAuth: true));
       if (response.statusCode != 200) {
-        throw Exception(jsonDecode(response.body)['error'] ??
-            'Error al eliminar vehículo');
+        throw Exception(
+            jsonDecode(response.body)['error'] ?? 'Error al eliminar vehículo');
       }
     } catch (e) {
       throw Exception('Error de conexión: $e');
@@ -314,11 +352,10 @@ class ApiService {
   Future<Map<String, dynamic>> cambiarEstadoVehiculo(int id) async {
     final url = Uri.parse('$baseUrl/api/vehiculos/$id/cambiar-estado');
     try {
-      final response =
-          await http.put(url, headers: _headers(withAuth: true));
+      final response = await http.put(url, headers: _headers(withAuth: true));
       if (response.statusCode == 200) return jsonDecode(response.body);
-      throw Exception(jsonDecode(response.body)['error'] ??
-          'Error al cambiar estado');
+      throw Exception(
+          jsonDecode(response.body)['error'] ?? 'Error al cambiar estado');
     } catch (e) {
       throw Exception('Error de conexión: $e');
     }
@@ -581,7 +618,8 @@ class ApiService {
     }
   }
 
-  Future<List<dynamic>> obtenerHistorialVentasPorVehiculo(int vehiculoId) async {
+  Future<List<dynamic>> obtenerHistorialVentasPorVehiculo(
+      int vehiculoId) async {
     final url = Uri.parse('$baseUrl/api/ventas/historial/vehiculo/$vehiculoId');
     try {
       final response = await http.get(url, headers: _headers(withAuth: true));
@@ -618,7 +656,8 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> agregarDetalleVenta(Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> agregarDetalleVenta(
+      Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/api/detalles-venta');
     try {
       final response = await http.post(
@@ -636,7 +675,8 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> actualizarDetalleVenta(int id, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> actualizarDetalleVenta(
+      int id, Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/api/detalles-venta/$id');
     try {
       final response = await http.put(
@@ -657,7 +697,8 @@ class ApiService {
   Future<void> eliminarDetalleVenta(int id) async {
     final url = Uri.parse('$baseUrl/api/detalles-venta/$id');
     try {
-      final response = await http.delete(url, headers: _headers(withAuth: true));
+      final response =
+          await http.delete(url, headers: _headers(withAuth: true));
       if (response.statusCode != 200) {
         throw Exception('Error al eliminar detalle de venta');
       }

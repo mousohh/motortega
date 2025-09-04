@@ -19,36 +19,46 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
   final TextEditingController _correoController = TextEditingController();
   final TextEditingController _telefonoController = TextEditingController();
   final TextEditingController _direccionController = TextEditingController();
+  final TextEditingController _tipoDocController = TextEditingController();
+  final TextEditingController _documentoController = TextEditingController();
 
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _nombreController.text = widget.usuario["name"] ?? "";
+    _nombreController.text = widget.usuario["nombre"] ?? "";
     _apellidoController.text = widget.usuario["apellido"] ?? "";
-    _correoController.text = widget.usuario["email"] ?? "";
+    _correoController.text = widget.usuario["correo"] ?? "";
     _telefonoController.text = widget.usuario["telefono"] ?? "";
     _direccionController.text = widget.usuario["direccion"] ?? "";
+    _tipoDocController.text = widget.usuario["tipo_documento"] ?? "";
+    _documentoController.text = widget.usuario["documento"]?.toString() ?? "";
   }
 
   Future<void> _guardarCambios() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
-        await ApiService().actualizarMiPerfil({
-          "name": _nombreController.text,
+        // 👇 Payload completo para evitar errores en el backend
+        final updatedData = {
+          "id": widget.usuario["id"],
+          "nombre": _nombreController.text,
           "apellido": _apellidoController.text,
-          "email": _correoController.text,
+          "correo": widget.usuario["correo"], // 👈 aunque es solo lectura, se envía
+          "tipo_documento": widget.usuario["tipo_documento"],
+          "documento": widget.usuario["documento"],
           "telefono": _telefonoController.text,
           "direccion": _direccionController.text,
-        });
+        };
+
+        await ApiService().actualizarMiPerfil(updatedData);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Perfil actualizado ✅")),
         );
 
-        Navigator.pop(context, true); // ✅ Volvemos con éxito
+        Navigator.pop(context, true); // 👈 devolvemos `true` para refrescar
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error al actualizar: $e")),
@@ -79,59 +89,33 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              // Nombre
-              TextFormField(
-                controller: _nombreController,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration("Nombre"),
-                validator: (val) =>
-                    val!.isEmpty ? "Ingrese su nombre" : null,
-              ),
+              _buildField(_nombreController, "Nombre"),
               const SizedBox(height: 15),
-
-              // Apellido
-              TextFormField(
-                controller: _apellidoController,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration("Apellido"),
-                validator: (val) =>
-                    val!.isEmpty ? "Ingrese su apellido" : null,
-              ),
+              _buildField(_apellidoController, "Apellido"),
               const SizedBox(height: 15),
-
-              // Correo
-              TextFormField(
-                controller: _correoController,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration("Correo"),
-                keyboardType: TextInputType.emailAddress,
+              _buildField(_correoController, "Correo", readOnly: true),
+              const SizedBox(height: 15),
+              _buildField(_tipoDocController, "Tipo Documento", readOnly: true),
+              const SizedBox(height: 15),
+              _buildField(_documentoController, "Documento", readOnly: true),
+              const SizedBox(height: 15),
+              _buildField(
+                _telefonoController,
+                "Teléfono",
+                keyboardType: TextInputType.phone,
                 validator: (val) {
-                  if (val == null || val.isEmpty) return "Ingrese su correo";
-                  if (!val.contains("@")) return "Correo inválido";
+                  if (val == null || val.isEmpty) {
+                    return "Ingrese su teléfono";
+                  }
+                  if (!RegExp(r'^[0-9]+$').hasMatch(val)) {
+                    return "Solo números permitidos";
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 15),
-
-              // Teléfono
-              TextFormField(
-                controller: _telefonoController,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration("Teléfono"),
-                keyboardType: TextInputType.phone,
-                validator: (val) =>
-                    val!.isEmpty ? "Ingrese su teléfono" : null,
-              ),
-              const SizedBox(height: 15),
-
-              // Dirección
-              TextFormField(
-                controller: _direccionController,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration("Dirección"),
-              ),
+              _buildField(_direccionController, "Dirección"),
               const SizedBox(height: 30),
-
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : ElevatedButton(
@@ -149,6 +133,29 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildField(
+    TextEditingController controller,
+    String label, {
+    bool readOnly = false,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      readOnly: readOnly,
+      keyboardType: keyboardType,
+      style: TextStyle(color: readOnly ? Colors.white70 : Colors.white),
+      decoration: _inputDecoration(label),
+      validator: validator ??
+          (val) {
+            if (!readOnly && (val == null || val.isEmpty)) {
+              return "Ingrese su $label";
+            }
+            return null;
+          },
     );
   }
 
