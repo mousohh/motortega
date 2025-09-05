@@ -200,16 +200,33 @@ Future<dynamic> verificarCodigo(String correo, String codigo) async {
     }
   }
 
-  // ================== USUARIOS ==================
-  /// 🎯 Esta es la función que buscas. Obtiene el perfil del usuario autenticado.
+
+    /// ================== USUARIOS ==================
     /// ================== USUARIOS ==================
   Future<Map<String, dynamic>> obtenerMiPerfil() async {
     await loadToken();
     final url = Uri.parse('$baseUrl/api/usuarios/mi-perfil');
     try {
       final response = await http.get(url, headers: _headers(withAuth: true));
+
+      print("📡 obtenerMiPerfil - Respuesta (${response.statusCode}): ${response.body}");
+
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final data = jsonDecode(response.body);
+
+        // 🔧 Normalizamos las claves para que Flutter siempre reciba los mismos nombres
+        return {
+          "id": data["id"] ?? data["usuario"]?["id"],
+          "nombre": data["nombre"] ?? data["name"] ?? "",
+          "apellido": data["apellido"] ?? "",
+          "correo": data["correo"] ?? data["email"] ?? "",
+          "tipo_documento": data["tipo_documento"] ?? "",
+          "documento": data["documento"] ?? data["document"] ?? "",
+          "telefono": data["telefono"] ?? "",
+          "direccion": data["direccion"] ?? "",
+          "estado": data["estado"] ?? "Activo",
+          "rol_id": data["rol_id"] ?? "4",
+        };
       } else {
         throw Exception('Error al obtener perfil: ${response.statusCode}');
       }
@@ -218,7 +235,8 @@ Future<dynamic> verificarCodigo(String correo, String codigo) async {
     }
   }
 
-  Future<Map<String, dynamic>> actualizarMiPerfil(Map<String, dynamic> data) async {
+
+Future<Map<String, dynamic>> actualizarMiPerfil(Map<String, dynamic> data) async {
     await loadToken();
     final url = Uri.parse('$baseUrl/api/usuarios/mi-perfil');
 
@@ -231,7 +249,7 @@ Future<dynamic> verificarCodigo(String correo, String codigo) async {
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': ' $_token', // 👈 ahora con Bearer
+        'Authorization': '$_token', // 👈 ahora con Bearer
       },
       body: jsonEncode(body),
     );
@@ -302,21 +320,47 @@ Future<dynamic> verificarCodigo(String correo, String codigo) async {
     }
   }
 
-  Future<Map<String, dynamic>> crearVehiculo(Map<String, dynamic> data) async {
-    final url = Uri.parse('$baseUrl/api/vehiculos');
-    try {
-      final response = await http.post(
-        url,
-        headers: _headers(withAuth: true),
-        body: jsonEncode(data),
-      );
-      if (response.statusCode == 201) return jsonDecode(response.body);
-      throw Exception(
-          jsonDecode(response.body)['error'] ?? 'Error al crear vehículo');
-    } catch (e) {
-      throw Exception('Error de conexión: $e');
+    /// Crear vehículo para cliente (endpoint especificado en tu API)
+  Future<Map<String, dynamic>> crearMiVehiculo(Map<String, dynamic> data) async {
+    await loadToken(); // aseguramos que _token esté cargado
+    final url = Uri.parse('$baseUrl/api/vehiculos/cliente/crear');
+
+    // Construimos body evitando enviar claves con valor null (mucho más seguro)
+    final Map<String, dynamic> body = {};
+    if (data.containsKey('placa')) body['placa'] = data['placa'];
+    if (data.containsKey('color')) body['color'] = data['color'];
+    if (data.containsKey('tipo_vehiculo')) body['tipo_vehiculo'] = data['tipo_vehiculo'];
+    if (data.containsKey('referencia_id') && data['referencia_id'] != null) body['referencia_id'] = data['referencia_id'];
+    if (data.containsKey('estado')) body['estado'] = data['estado'];
+
+    print("📦 crearMiVehiculo - Body enviado: ${jsonEncode(body)}");
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        // NO usamos "Bearer " según tu indicación
+        'Authorization': '$_token',
+      },
+      body: jsonEncode(body),
+    );
+
+    print("📡 crearMiVehiculo - Respuesta (${response.statusCode}): ${response.body}");
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body);
+    } else {
+      // Intentamos extraer mensaje de error del body, si existe
+      try {
+        final parsed = jsonDecode(response.body);
+        final errorMsg = parsed['error'] ?? parsed['message'] ?? response.body;
+        throw Exception(errorMsg);
+      } catch (e) {
+        throw Exception('Error al crear vehículo: ${response.body}');
+      }
     }
   }
+
 
   Future<Map<String, dynamic>> actualizarVehiculo(
       int id, Map<String, dynamic> data) async {

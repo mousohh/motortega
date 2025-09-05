@@ -40,14 +40,11 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
-        // 👇 Payload completo para evitar errores en el backend
+        // 👇 Mezclamos el usuario completo y actualizamos solo los campos editados
         final updatedData = {
-          "id": widget.usuario["id"],
+          ...widget.usuario,
           "nombre": _nombreController.text,
           "apellido": _apellidoController.text,
-          "correo": widget.usuario["correo"], // 👈 aunque es solo lectura, se envía
-          "tipo_documento": widget.usuario["tipo_documento"],
-          "documento": widget.usuario["documento"],
           "telefono": _telefonoController.text,
           "direccion": _direccionController.text,
         };
@@ -58,7 +55,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
           const SnackBar(content: Text("Perfil actualizado ✅")),
         );
 
-        Navigator.pop(context, true); // 👈 devolvemos `true` para refrescar
+        Navigator.pop(context, true);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error al actualizar: $e")),
@@ -99,20 +96,8 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
               const SizedBox(height: 15),
               _buildField(_documentoController, "Documento", readOnly: true),
               const SizedBox(height: 15),
-              _buildField(
-                _telefonoController,
-                "Teléfono",
-                keyboardType: TextInputType.phone,
-                validator: (val) {
-                  if (val == null || val.isEmpty) {
-                    return "Ingrese su teléfono";
-                  }
-                  if (!RegExp(r'^[0-9]+$').hasMatch(val)) {
-                    return "Solo números permitidos";
-                  }
-                  return null;
-                },
-              ),
+              _buildField(_telefonoController, "Teléfono",
+                  keyboardType: TextInputType.phone),
               const SizedBox(height: 15),
               _buildField(_direccionController, "Dirección"),
               const SizedBox(height: 30),
@@ -136,26 +121,20 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     );
   }
 
-  Widget _buildField(
-    TextEditingController controller,
-    String label, {
-    bool readOnly = false,
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
-  }) {
+  Widget _buildField(TextEditingController controller, String label,
+      {bool readOnly = false, TextInputType keyboardType = TextInputType.text}) {
     return TextFormField(
       controller: controller,
       readOnly: readOnly,
       keyboardType: keyboardType,
       style: TextStyle(color: readOnly ? Colors.white70 : Colors.white),
       decoration: _inputDecoration(label),
-      validator: validator ??
-          (val) {
-            if (!readOnly && (val == null || val.isEmpty)) {
-              return "Ingrese su $label";
-            }
-            return null;
-          },
+      validator: (val) {
+        if (!readOnly && (val == null || val.isEmpty)) {
+          return "Ingrese su $label";
+        }
+        return null;
+      },
     );
   }
 

@@ -15,60 +15,73 @@ class _AgregarVehiculoScreenState extends State<AgregarVehiculoScreen> {
   final TextEditingController _placaController = TextEditingController();
   final TextEditingController _colorController = TextEditingController();
 
-  int? _marcaId;
+  String? _tipoVehiculo;
   int? _referenciaId;
 
-  List<dynamic> _marcas = [];
   List<dynamic> _referencias = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _cargarDatos();
+    _cargarReferencias();
   }
 
-  Future<void> _cargarDatos() async {
+  Future<void> _cargarReferencias() async {
     try {
-      final marcas = await ApiService().obtenerMarcas();
       final refs = await ApiService().obtenerReferencias();
-
       setState(() {
-        _marcas = marcas;
         _referencias = refs;
       });
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error al cargar datos: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al cargar referencias: $e")),
+      );
     }
   }
 
   Future<void> _guardarVehiculo() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+    if (!_formKey.currentState!.validate()) return;
 
-      try {
-        final response = await ApiService().crearVehiculo({
-          "placa": _placaController.text,
-          "color": _colorController.text,
-          "estado": "Activo",
-          "cliente_id": widget.clienteId,
-          "marca_id": _marcaId,
-          "referencia_id": _referenciaId,
-        });
+    if (_tipoVehiculo == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Seleccione un tipo de vehículo")),
+      );
+      return;
+    }
+    if (_referenciaId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Seleccione una referencia")),
+      );
+      return;
+    }
 
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Vehículo agregado ✅")));
-        Navigator.pop(context, true);
-      } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: $e")));
-      } finally {
-        setState(() => _isLoading = false);
-      }
+    setState(() => _isLoading = true);
+
+    try {
+      final body = {
+        "placa": _placaController.text.trim(),
+        "color": _colorController.text.trim(),
+        "tipo_vehiculo": _tipoVehiculo,
+        "cliente_id": widget.clienteId,
+        "estado": "Activo",
+        "referencia_id": _referenciaId,
+      };
+
+      print("📦 Enviando vehículo: $body");
+
+      await ApiService().crearMiVehiculo(body);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Vehículo agregado ✅")),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -116,73 +129,65 @@ class _AgregarVehiculoScreenState extends State<AgregarVehiculoScreen> {
               ),
               const SizedBox(height: 15),
 
-              // Marca
-              DropdownButtonFormField<int>(
-                decoration: _inputDecoration("Marca"),
+              // Tipo de vehículo
+              DropdownButtonFormField<String>(
+                decoration: _inputDecoration("Tipo de vehículo"),
                 dropdownColor: Colors.black,
-                value: _marcaId,
-                items:
-                    _marcas.map<DropdownMenuItem<int>>((m) {
-                      // Asegurar que el id siempre sea int
-                      final id =
-                          (m["id"] ?? m["id_marca"]) is String
-                              ? int.tryParse(m["id"] ?? m["id_marca"])
-                              : m["id"] ?? m["id_marca"];
-
-                      final nombre = m["nombre"] ?? m["descripcion"] ?? "—";
-
-                      return DropdownMenuItem<int>(
-                        value: id,
-                        child: Text(
-                          nombre,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      );
-                    }).toList(),
-                onChanged: (val) => setState(() => _marcaId = val),
-                validator: (val) => val == null ? "Seleccione una marca" : null,
+                value: _tipoVehiculo,
+                items: ["Carro", "Moto", "Camioneta"]
+                    .map((tipo) => DropdownMenuItem(
+                          value: tipo,
+                          child: Text(
+                            tipo,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ))
+                    .toList(),
+                onChanged: (val) => setState(() => _tipoVehiculo = val),
+                validator: (val) =>
+                    val == null ? "Seleccione un tipo de vehículo" : null,
               ),
+              const SizedBox(height: 15),
 
               // Referencia
               DropdownButtonFormField<int>(
                 decoration: _inputDecoration("Referencia"),
                 dropdownColor: Colors.black,
                 value: _referenciaId,
-                items:
-                    _referencias.map<DropdownMenuItem<int>>((r) {
-                      final id =
-                          (r["id"] ?? r["id_referencia"]) is String
-                              ? int.tryParse(r["id"] ?? r["id_referencia"])
-                              : r["id"] ?? r["id_referencia"];
+                items: _referencias.map<DropdownMenuItem<int>>((r) {
+                  final rawId = r["id"] ?? r["id_referencia"];
+                  final id =
+                      rawId is String ? int.tryParse(rawId) ?? 0 : rawId as int;
 
-                      final nombre = r["nombre"] ?? r["descripcion"] ?? "—";
+                  final nombre = r["nombre"] ?? r["descripcion"] ?? "—";
 
-                      return DropdownMenuItem<int>(
-                        value: id,
-                        child: Text(
-                          nombre,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      );
-                    }).toList(),
+                  return DropdownMenuItem<int>(
+                    value: id,
+                    child: Text(
+                      nombre,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  );
+                }).toList(),
                 onChanged: (val) => setState(() => _referenciaId = val),
-                validator:
-                    (val) => val == null ? "Seleccione una referencia" : null,
+                validator: (val) =>
+                    val == null ? "Seleccione una referencia" : null,
               ),
+              const SizedBox(height: 30),
 
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppStyles.primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppStyles.primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                      ),
+                      onPressed: _guardarVehiculo,
+                      child: const Text(
+                        "Agregar vehículo",
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
                     ),
-                    onPressed: _guardarVehiculo,
-                    child: const Text(
-                      "Agregar vehículo",
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  ),
             ],
           ),
         ),
