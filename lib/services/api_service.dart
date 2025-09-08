@@ -114,66 +114,65 @@ class ApiService {
     }
   }
 
-// ================== RECUPERAR CONTRASEÑA ==================
-Future<dynamic> solicitarCodigo(String correo) async {
-  final url = Uri.parse('$baseUrl/api/auth/solicitar-codigo');
-  try {
-    // 👀 DEBUG
-    print("📤 [solicitarCodigo] Enviando correo: $correo");
+  // ================== RECUPERAR CONTRASEÑA ==================
+  Future<dynamic> solicitarCodigo(String correo) async {
+    final url = Uri.parse('$baseUrl/api/auth/solicitar-codigo');
+    try {
+      // 👀 DEBUG
+      print("📤 [solicitarCodigo] Enviando correo: $correo");
 
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({'correo': correo}),
-    );
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'correo': correo}),
+      );
 
-    print("📡 [solicitarCodigo] Respuesta ${response.statusCode}: ${response.body}");
+      print("📡 [solicitarCodigo] Respuesta ${response.statusCode}: ${response.body}");
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final error = jsonDecode(response.body)['message'];
-      throw Exception(error ?? 'Error al solicitar código');
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        final error = jsonDecode(response.body)['message'];
+        throw Exception(error ?? 'Error al solicitar código');
+      }
+    } catch (e) {
+      print("❌ [solicitarCodigo] Error: $e");
+      throw Exception('Error de conexión: $e');
     }
-  } catch (e) {
-    print("❌ [solicitarCodigo] Error: $e");
-    throw Exception('Error de conexión: $e');
   }
-}
 
-Future<dynamic> verificarCodigo(String correo, String codigo) async {
-  final url = Uri.parse('$baseUrl/api/auth/verificar-codigo');
-  try {
-    // 👀 DEBUG
-    print("📤 [verificarCodigo] Enviando correo: $correo, código: $codigo");
+  Future<dynamic> verificarCodigo(String correo, String codigo) async {
+    final url = Uri.parse('$baseUrl/api/auth/verificar-codigo');
+    try {
+      // 👀 DEBUG
+      print("📤 [verificarCodigo] Enviando correo: $correo, código: $codigo");
 
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'correo': correo,
-        'codigo': codigo,
-      }),
-    );
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'correo': correo,
+          'codigo': codigo,
+        }),
+      );
 
-    print("📡 [verificarCodigo] Respuesta ${response.statusCode}: ${response.body}");
+      print("📡 [verificarCodigo] Respuesta ${response.statusCode}: ${response.body}");
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final error = jsonDecode(response.body)['message'];
-      throw Exception(error ?? 'Código inválido o expirado');
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        final error = jsonDecode(response.body)['message'];
+        throw Exception(error ?? 'Código inválido o expirado');
+      }
+    } catch (e) {
+      print("❌ [verificarCodigo] Error: $e");
+      throw Exception('Error de conexión: $e');
     }
-  } catch (e) {
-    print("❌ [verificarCodigo] Error: $e");
-    throw Exception('Error de conexión: $e');
   }
-}
-
 
   Future<dynamic> resetPassword(
       String correo, String codigo, String nuevaPassword) async {
@@ -200,9 +199,7 @@ Future<dynamic> verificarCodigo(String correo, String codigo) async {
     }
   }
 
-
-    /// ================== USUARIOS ==================
-    /// ================== USUARIOS ==================
+  /// ================== USUARIOS ==================
   Future<Map<String, dynamic>> obtenerMiPerfil() async {
     await loadToken();
     final url = Uri.parse('$baseUrl/api/usuarios/mi-perfil');
@@ -235,8 +232,7 @@ Future<dynamic> verificarCodigo(String correo, String codigo) async {
     }
   }
 
-
-Future<Map<String, dynamic>> actualizarMiPerfil(Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> actualizarMiPerfil(Map<String, dynamic> data) async {
     await loadToken();
     final url = Uri.parse('$baseUrl/api/usuarios/mi-perfil');
 
@@ -263,10 +259,6 @@ Future<Map<String, dynamic>> actualizarMiPerfil(Map<String, dynamic> data) async
       throw Exception(errorMsg);
     }
   }
-
-
-
-
 
   Future<Map<String, dynamic>> cambiarPassword(
       int usuarioId, String actual, String nueva) async {
@@ -305,8 +297,21 @@ Future<Map<String, dynamic>> actualizarMiPerfil(Map<String, dynamic> data) async
     }
   }
 
-  // ... 🚗 resto de métodos de vehículos, marcas, citas, ventas, dashboard, clientes
-  // (se mantienen igual que los que me pasaste, no los recorto por espacio)
+  Future<Map<String, dynamic>> obtenerDetalleVehiculo(int vehiculoId) async {
+    await loadToken();
+    final url = Uri.parse('$baseUrl/api/vehiculos/cliente/detalle/$vehiculoId');
+    try {
+      final response = await http.get(url, headers: _headers(withAuth: true));
+      print("📡 obtenerDetalleVehiculo - (${response.statusCode}): ${response.body}");
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      throw Exception('Error al obtener detalle del vehículo');
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
 
   Future<List<dynamic>> obtenerVehiculosPorCliente(int clienteId) async {
     await loadToken(); // 🔧 Asegúrate de cargar el token primero
@@ -320,78 +325,89 @@ Future<Map<String, dynamic>> actualizarMiPerfil(Map<String, dynamic> data) async
     }
   }
 
-    /// Crear vehículo para cliente (endpoint especificado en tu API)
   Future<Map<String, dynamic>> crearMiVehiculo(Map<String, dynamic> data) async {
-    await loadToken(); // aseguramos que _token esté cargado
-    final url = Uri.parse('$baseUrl/api/vehiculos/cliente/crear');
+  await loadToken();
+  final url = Uri.parse('$baseUrl/api/vehiculos/cliente/crear');
 
-    // Construimos body evitando enviar claves con valor null (mucho más seguro)
-    final Map<String, dynamic> body = {};
-    if (data.containsKey('placa')) body['placa'] = data['placa'];
-    if (data.containsKey('color')) body['color'] = data['color'];
-    if (data.containsKey('tipo_vehiculo')) body['tipo_vehiculo'] = data['tipo_vehiculo'];
-    if (data.containsKey('referencia_id') && data['referencia_id'] != null) body['referencia_id'] = data['referencia_id'];
-    if (data.containsKey('estado')) body['estado'] = data['estado'];
+  final Map<String, dynamic> body = {};
+  if (data.containsKey('placa')) body['placa'] = data['placa'];
+  if (data.containsKey('color')) body['color'] = data['color'];
+  if (data.containsKey('tipo_vehiculo')) body['tipo_vehiculo'] = data['tipo_vehiculo'];
+  if (data.containsKey('referencia_id') && data['referencia_id'] != null) body['referencia_id'] = data['referencia_id'];
+  if (data.containsKey('estado')) body['estado'] = data['estado'];
+  if (data.containsKey('cliente_id')) body['cliente_id'] = data['cliente_id']; // 👈 Faltaba
 
-    print("📦 crearMiVehiculo - Body enviado: ${jsonEncode(body)}");
+  print("📦 crearMiVehiculo - Body enviado: ${jsonEncode(body)}");
 
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        // NO usamos "Bearer " según tu indicación
-        'Authorization': '$_token',
-      },
-      body: jsonEncode(body),
-    );
+  final response = await http.post(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': '$_token',
+    },
+    body: jsonEncode(body),
+  );
 
-    print("📡 crearMiVehiculo - Respuesta (${response.statusCode}): ${response.body}");
+  print("📡 crearMiVehiculo - Respuesta (${response.statusCode}): ${response.body}");
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return jsonDecode(response.body);
-    } else {
-      // Intentamos extraer mensaje de error del body, si existe
-      try {
-        final parsed = jsonDecode(response.body);
-        final errorMsg = parsed['error'] ?? parsed['message'] ?? response.body;
-        throw Exception(errorMsg);
-      } catch (e) {
-        throw Exception('Error al crear vehículo: ${response.body}');
-      }
+  if (response.statusCode == 200 || response.statusCode == 201) {
+    return jsonDecode(response.body);
+  } else {
+    try {
+      final parsed = jsonDecode(response.body);
+      final errorMsg = parsed['error'] ?? parsed['message'] ?? response.body;
+      throw Exception(errorMsg);
+    } catch (e) {
+      throw Exception('Error al crear vehículo: ${response.body}');
     }
   }
+}
 
 
   Future<Map<String, dynamic>> actualizarVehiculo(
       int id, Map<String, dynamic> data) async {
-    final url = Uri.parse('$baseUrl/api/vehiculos/$id');
-    try {
-      final response = await http.put(
-        url,
-        headers: _headers(withAuth: true),
-        body: jsonEncode(data),
-      );
-      if (response.statusCode == 200) return jsonDecode(response.body);
-      throw Exception(
-          jsonDecode(response.body)['error'] ?? 'Error al actualizar vehículo');
-    } catch (e) {
-      throw Exception('Error de conexión: $e');
+    await loadToken();
+    final url = Uri.parse('$baseUrl/api/vehiculos/cliente/editar/$id');
+    final response = await http.put(
+      url,
+      headers: _headers(withAuth: true),
+      body: jsonEncode(data),
+    );
+    
+    print("📡 actualizarVehiculo - (${response.statusCode}): ${response.body}");
+    
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Error al actualizar vehículo: ${response.body}');
     }
   }
 
-  Future<void> eliminarVehiculo(int id) async {
-    final url = Uri.parse('$baseUrl/api/vehiculos/$id');
-    try {
-      final response =
-          await http.delete(url, headers: _headers(withAuth: true));
-      if (response.statusCode != 200) {
-        throw Exception(
-            jsonDecode(response.body)['error'] ?? 'Error al eliminar vehículo');
-      }
-    } catch (e) {
-      throw Exception('Error de conexión: $e');
+ Future<void> eliminarVehiculo(int id) async {
+  await loadToken();
+  final url = Uri.parse('$baseUrl/api/vehiculos/$id'); // 👈 cambio aquí
+  try {
+    final response = await http.delete(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': '$_token', // 👈 sin Bearer
+      },
+    );
+
+    print("📡 eliminarVehiculo - (${response.statusCode}): ${response.body}");
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        jsonDecode(response.body)['error'] ?? 'Error al eliminar vehículo',
+      );
     }
+  } catch (e) {
+    throw Exception('Error de conexión: $e');
   }
+}
+
+
 
   Future<Map<String, dynamic>> cambiarEstadoVehiculo(int id) async {
     final url = Uri.parse('$baseUrl/api/vehiculos/$id/cambiar-estado');
@@ -408,9 +424,13 @@ Future<Map<String, dynamic>> actualizarMiPerfil(Map<String, dynamic> data) async
   // ================== MARCAS Y REFERENCIAS ==================
   Future<List<dynamic>> obtenerMarcas() async {
     final url = Uri.parse('$baseUrl/api/marcas');
+    await loadToken(); 
     try {
-      final response = await http.get(url, headers: _headers());
-      if (response.statusCode == 200) return jsonDecode(response.body);
+      final response = await http.get(url, headers: _headers(withAuth: true));
+      print("📡 obtenerMarcas - (${response.statusCode}): ${response.body}");
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      }
       throw Exception('Error al obtener marcas');
     } catch (e) {
       throw Exception('Error de conexión: $e');
@@ -419,9 +439,13 @@ Future<Map<String, dynamic>> actualizarMiPerfil(Map<String, dynamic> data) async
 
   Future<List<dynamic>> obtenerReferencias() async {
     final url = Uri.parse('$baseUrl/api/referencias');
+    await loadToken();
     try {
-      final response = await http.get(url, headers: _headers());
-      if (response.statusCode == 200) return jsonDecode(response.body);
+      final response = await http.get(url, headers: _headers(withAuth: true));
+      print("📡 obtenerReferencias - (${response.statusCode}): ${response.body}");
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      }
       throw Exception('Error al obtener referencias');
     } catch (e) {
       throw Exception('Error de conexión: $e');
@@ -430,9 +454,13 @@ Future<Map<String, dynamic>> actualizarMiPerfil(Map<String, dynamic> data) async
 
   Future<List<dynamic>> obtenerReferenciasPorMarca(int marcaId) async {
     final url = Uri.parse('$baseUrl/api/referencias/marca/$marcaId');
+    await loadToken();
     try {
-      final response = await http.get(url, headers: _headers());
-      if (response.statusCode == 200) return jsonDecode(response.body);
+      final response = await http.get(url, headers: _headers(withAuth: true));
+      print("📡 obtenerReferenciasPorMarca($marcaId) - (${response.statusCode}): ${response.body}");
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      }
       throw Exception('Error al obtener referencias por marca');
     } catch (e) {
       throw Exception('Error de conexión: $e');

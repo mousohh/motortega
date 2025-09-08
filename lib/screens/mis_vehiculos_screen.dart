@@ -24,21 +24,35 @@ class _VehiculosScreenState extends State<VehiculosScreen> {
     _cargarVehiculos();
   }
 
-  Future<void> _cargarVehiculos() async {
-    try {
-      final data =
-          await ApiService().obtenerVehiculosPorCliente(widget.clienteId);
-      setState(() {
-        vehiculos = data;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error cargando vehículos: $e")),
-      );
+ Future<void> _cargarVehiculos() async {
+  try {
+    final data = await ApiService().obtenerVehiculosPorCliente(widget.clienteId);
+
+    // 🔧 Enriquecer cada vehículo con la referencia real
+    final referencias = await ApiService().obtenerReferencias();
+    for (var vehiculo in data) {
+      final refId = vehiculo["referencia_id"];
+      if (refId != null) {
+        final ref = referencias.firstWhere(
+          (r) => r["id"] == refId,
+          orElse: () => {},
+        );
+        vehiculo["referencia"] = ref; // guardamos el objeto completo
+      }
     }
+
+    setState(() {
+      vehiculos = data;
+      _isLoading = false;
+    });
+  } catch (e) {
+    setState(() => _isLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error cargando vehículos: $e")),
+    );
   }
+}
+
 
   Future<void> _eliminarVehiculo(int id) async {
     try {
@@ -84,48 +98,59 @@ class _VehiculosScreenState extends State<VehiculosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
+      backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text(
           "MIS VEHÍCULOS",
           style: TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.black,
         elevation: 1,
-        iconTheme: IconThemeData(color: AppStyles.primaryColor),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : vehiculos.isEmpty
-              ? const Center(child: Text("No tienes vehículos registrados"))
+              ? const Center(
+                  child: Text("No tienes vehículos registrados",
+                      style: TextStyle(color: Colors.white70)))
               : ListView.builder(
                   itemCount: vehiculos.length,
                   itemBuilder: (context, index) {
                     final vehiculo = vehiculos[index];
                     return Card(
                       margin: const EdgeInsets.all(10),
-                      color: Colors.grey[300],
+                      color: Colors.grey[850],
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                       child: ListTile(
-                        title: Text("PLACA: ${vehiculo["placa"]}",
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
+                        title: Text(
+                          "PLACA: ${vehiculo["placa"] ?? "N/A"}",
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white),
+                        ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("Color: ${vehiculo["color"]}"),
-                            Text("Tipo: ${vehiculo["marca"]?["nombre"] ?? "N/A"}"),
-                            Text("Referencia: ${vehiculo["referencia"]?["nombre"] ?? "N/A"}"),
+                            Text("Color: ${vehiculo["color"] ?? "N/A"}",
+                                style: const TextStyle(color: Colors.white70)),
+                            Text("Tipo: ${vehiculo["tipo_vehiculo"] ?? "N/A"}",
+                                style: const TextStyle(color: Colors.white70)),
+                            Text(
+                                "Referencia: ${vehiculo["referencia"]?["nombre"] ?? vehiculo["referencia"]?["descripcion"] ?? "N/A"}",
+                                style: const TextStyle(color: Colors.white70)),
                             Row(
                               children: [
-                                const Text("Estado: "),
+                                const Text("Estado: ",
+                                    style: TextStyle(color: Colors.white70)),
                                 Icon(
                                   Icons.circle,
                                   size: 14,
-                                  color: vehiculo["estado"] == true
+                                  color: (vehiculo["estado"] == "Activo" ||
+                                          vehiculo["estado"] == true)
                                       ? Colors.green
                                       : Colors.red,
                                 )
@@ -165,7 +190,8 @@ class _VehiculosScreenState extends State<VehiculosScreen> {
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _mostrarDialogoEliminar(vehiculo["id"]),
+                              onPressed: () =>
+                                  _mostrarDialogoEliminar(vehiculo["id"]),
                             ),
                           ],
                         ),
@@ -180,7 +206,8 @@ class _VehiculosScreenState extends State<VehiculosScreen> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => AgregarVehiculoScreen(clienteId: widget.clienteId)),
+                builder: (_) =>
+                    AgregarVehiculoScreen(clienteId: widget.clienteId)),
           );
           if (result == true) _cargarVehiculos();
         },

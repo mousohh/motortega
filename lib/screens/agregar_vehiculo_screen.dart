@@ -16,22 +16,38 @@ class _AgregarVehiculoScreenState extends State<AgregarVehiculoScreen> {
   final TextEditingController _colorController = TextEditingController();
 
   String? _tipoVehiculo;
+  int? _marcaId;
   int? _referenciaId;
 
+  List<dynamic> _marcas = [];
   List<dynamic> _referencias = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _cargarReferencias();
+    _cargarMarcas();
   }
 
-  Future<void> _cargarReferencias() async {
+  Future<void> _cargarMarcas() async {
     try {
-      final refs = await ApiService().obtenerReferencias();
+      final marcas = await ApiService().obtenerMarcas();
+      setState(() {
+        _marcas = marcas;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al cargar marcas: $e")),
+      );
+    }
+  }
+
+  Future<void> _cargarReferencias(int marcaId) async {
+    try {
+      final refs = await ApiService().obtenerReferenciasPorMarca(marcaId);
       setState(() {
         _referencias = refs;
+        _referenciaId = null; // reset selección
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -46,6 +62,12 @@ class _AgregarVehiculoScreenState extends State<AgregarVehiculoScreen> {
     if (_tipoVehiculo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Seleccione un tipo de vehículo")),
+      );
+      return;
+    }
+    if (_marcaId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Seleccione una marca")),
       );
       return;
     }
@@ -149,20 +171,42 @@ class _AgregarVehiculoScreenState extends State<AgregarVehiculoScreen> {
               ),
               const SizedBox(height: 15),
 
+              // Marca
+              DropdownButtonFormField<int>(
+                decoration: _inputDecoration("Marca"),
+                dropdownColor: Colors.black,
+                value: _marcaId,
+                items: _marcas.map<DropdownMenuItem<int>>((m) {
+                  final id = m["id"] ?? m["id_marca"];
+                  final nombre = m["nombre"] ?? m["descripcion"] ?? "—";
+                  return DropdownMenuItem<int>(
+                    value: id is String ? int.tryParse(id) : id,
+                    child: Text(
+                      nombre,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  setState(() => _marcaId = val);
+                  if (val != null) {
+                    _cargarReferencias(val);
+                  }
+                },
+                validator: (val) => val == null ? "Seleccione una marca" : null,
+              ),
+              const SizedBox(height: 15),
+
               // Referencia
               DropdownButtonFormField<int>(
                 decoration: _inputDecoration("Referencia"),
                 dropdownColor: Colors.black,
                 value: _referenciaId,
                 items: _referencias.map<DropdownMenuItem<int>>((r) {
-                  final rawId = r["id"] ?? r["id_referencia"];
-                  final id =
-                      rawId is String ? int.tryParse(rawId) ?? 0 : rawId as int;
-
+                  final id = r["id"] ?? r["id_referencia"];
                   final nombre = r["nombre"] ?? r["descripcion"] ?? "—";
-
                   return DropdownMenuItem<int>(
-                    value: id,
+                    value: id is String ? int.tryParse(id) : id,
                     child: Text(
                       nombre,
                       style: const TextStyle(color: Colors.white),

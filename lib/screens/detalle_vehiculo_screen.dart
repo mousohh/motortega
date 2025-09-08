@@ -36,7 +36,11 @@ class DetalleVehiculoScreen extends StatelessWidget {
             const SizedBox(height: 15),
 
             // Tipo vehículo
-            _buildInfoField("Tipo vehículo", vehiculo["marca"]?["nombre"] ?? "-"),
+            _buildInfoField("Tipo vehículo", vehiculo["tipo_vehiculo"] ?? "-"),
+            const SizedBox(height: 15),
+
+            // Marca (desde la referencia)
+            _buildInfoField("Marca", vehiculo["referencia"]?["marca_nombre"] ?? "-"),
             const SizedBox(height: 15),
 
             // Referencia
